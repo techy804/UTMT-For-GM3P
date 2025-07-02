@@ -12,6 +12,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
+using System.CommandLine.NamingConventionBinder;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -93,74 +94,74 @@ public partial class Program : IScriptInterface
     /// <returns>Result code of the program.</returns>
     public static int Main(string[] args)
     {
-        var verboseOption = new Option<bool>(new[] { "-v", "--verbose" }, "Detailed logs");
+        var verboseOption = new Option<bool>("--verbose" , description: "Detailed logs");
 
         var dataFileArgument = new Argument<FileInfo>("datafile", "Path to the data.win/.ios/.droid/.unx file");
 
         // Setup new command
-        Command newCommand = new Command("new", "Generates a blank data file")
+        Command newCommand = new("new", "Generates a blank data file")
         {
-            new Option<FileInfo>(new[] { "-o", "--output" }, () => new NewOptions().Output),
-            new Option<bool>(new[] { "-f", "--overwrite" }, "Overwrite destination file if it already exists"),
-            new Option<bool>(new[] { "-", "--stdout" }, "Write new data content to stdout"), // "-" is often used in *nix land as a replacement for stdout
+            new Option<FileInfo>("--output" , () => new NewOptions().Output),
+            new Option<bool>("--overwrite" , "Overwrite destination file if it already exists"),
+            new Option<bool>("--stdout" , "Write new data content to stdout"), // "-" is often used in *nix land as a replacement for stdout
             verboseOption
         };
         newCommand.Handler = CommandHandler.Create<NewOptions>(Program.New);
 
         // Setup load command
-        var scriptRunnerOption = new Option<FileInfo[]>(new[] { "-s", "--scripts" }, "Scripts to apply to the <datafile>. Ex. a.csx b.csx");
-        Command loadCommand = new Command("load", "Load a data file and perform actions on it")
+        var scriptRunnerOption = new Option<FileInfo[]>("--scripts", "Scripts to apply to the <datafile>. Ex. a.csx b.csx");
+        Command loadCommand = new("load", "Load a data file and perform actions on it")
         {
             dataFileArgument,
             scriptRunnerOption,
             verboseOption,
             //TODO: why no force overwrite here, but needed for new?
-            new Option<FileInfo>(new[] { "-o", "--output" }, "Where to save the modified data file"),
-            new Option<string>(new[] { "-l", "--line" }, "Run C# string. Runs AFTER everything else"),
+            new Option<FileInfo>("--output", "Where to save the modified data file"),
+            new Option<string>("--line", "Run C# string. Runs AFTER everything else"),
             //TODO: make interactive another Command
-            new Option<bool>(new[] { "-i", "--interactive" }, "Interactive menu launch")
+            new Option<bool>("--interactive", "Interactive menu launch")
         };
         loadCommand.Handler = CommandHandler.Create<LoadOptions>(Program.Load);
 
         // Setup info command
-        Command infoCommand = new Command("info", "Show basic info about the game data file") { dataFileArgument, verboseOption };
+        Command infoCommand = new("info", "Show basic info about the game data file") { dataFileArgument, verboseOption };
         infoCommand.Handler = CommandHandler.Create<InfoOptions>(Program.Info);
 
         // Setup dump command
-        Command dumpCommand = new Command("dump", "Dump certain properties about the game data file")
+        Command dumpCommand = new("dump", "Dump certain properties about the game data file")
         {
             dataFileArgument,
             verboseOption,
-            new Option<DirectoryInfo>(new[] { "-o", "--output" }, "Where to dump data file properties to. Will default to path of the data file"),
-            new Option<string[]>(new[] { "-c", "--code" },
+            new Option<DirectoryInfo>("--output", "Where to dump data file properties to. Will default to path of the data file"),
+            new Option<string[]>("--code",
                 $"The code files to dump. Ex. gml_Script_init_map gml_Script_reset_map. Specify '{UMT_DUMP_ALL}' to dump all code entries"),
-            new Option<bool>(new[] { "-s", "--strings" }, "Whether to dump all strings"),
-            new Option<bool>(new[] { "-t", "--textures" }, "Whether to dump all embedded textures")
+            new Option<bool>("--strings", "Whether to dump all strings"),
+            new Option<bool>("--textures", "Whether to dump all embedded textures")
         };
         dumpCommand.Handler = CommandHandler.Create<DumpOptions>(Program.Dump);
 
         // Setup replace command
-        Command replaceCommand = new Command("replace", "Replace certain properties in the game data file")
+        Command replaceCommand = new("replace", "Replace certain properties in the game data file")
         {
             dataFileArgument,
             verboseOption,
-            new Option<FileInfo>(new[] { "-o", "--output" }, "Where to save the modified data file"),
-            new Option<string[]>(new[] { "-c", "--code" },
+            new Option<FileInfo>("--output", "Where to save the modified data file"),
+            new Option<string[]>("--code",
                 $"Which code files to replace with which file. Ex. 'gml_Script_init_map=./newCode.gml'. It is possible to replace everything by using '{UMT_REPLACE_ALL}'"),
-            new Option<string[]>(new[] { "-t", "--textures" },
+            new Option<string[]>("--textures",
                 $"Which embedded texture entry to replace with which file. Ex. 'Texture 0=./newTexture.png'. It is possible to replace everything by using '{UMT_REPLACE_ALL}'")
         };
         replaceCommand.Handler = CommandHandler.Create<ReplaceOptions>(Program.Replace);
 
         // Merge everything together
-        RootCommand rootCommand = new RootCommand
-        {
+        RootCommand rootCommand =
+        [
             newCommand,
             loadCommand,
             infoCommand,
             dumpCommand,
             replaceCommand
-        };
+        ];
         rootCommand.Description = "CLI tool for modding, decompiling and unpacking Undertale (and other GameMaker games)!";
         Parser commandLine = new CommandLineBuilder(rootCommand)
             .UseDefaults() // automatically configures dotnet-suggest
@@ -356,7 +357,7 @@ public partial class Program : IScriptInterface
         {
             // If user wanted to dump everything, do that, otherwise only dump what user provided
             string[] codeArray;
-            if (options.Code.Contains(UMT_DUMP_ALL))
+            if (options.Code.Contains("UMT_DUMP_ALL"))
                 codeArray = program.Data.Code.Select(c => c.Name.Content).ToArray();
             else
                 codeArray = options.Code;
@@ -413,9 +414,9 @@ public partial class Program : IScriptInterface
             }
 
             // If user wants to replace all, we'll be handling it differently. Replace every file from the provided directory
-            if (codeDict.ContainsKey(UMT_REPLACE_ALL))
+            if (codeDict.TryGetValue(UMT_REPLACE_ALL, out FileInfo value))
             {
-                string directory = codeDict[UMT_REPLACE_ALL].FullName;
+                string directory = value.FullName;
                 foreach (FileInfo file in new DirectoryInfo(directory).GetFiles())
                     program.ReplaceCodeEntryWithFile(Path.GetFileNameWithoutExtension(file.Name), file);
             }
