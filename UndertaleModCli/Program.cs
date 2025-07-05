@@ -290,10 +290,8 @@ public partial class Program : IScriptInterface
             program.RunInteractiveMenu();
             return EXIT_SUCCESS;
         }
-        
-        //Adds Dynamic input path, if a script needs it
 
-        program.modNumber(Convert.ToString(Directory.GetParent(Convert.ToString(options.Datafile))));
+
         // if we have any scripts to run, run every one of them
         if (options.Scripts != null)
         {
@@ -965,10 +963,7 @@ public partial class Program : IScriptInterface
             throw new IOException($"Could not save data file: {e.Message}");
         }
     }
-    public void modNumber(string path)
-    {
-        
-    }
+
     /// <summary>
     /// Read supplied filename and return the data file.
     /// </summary>
