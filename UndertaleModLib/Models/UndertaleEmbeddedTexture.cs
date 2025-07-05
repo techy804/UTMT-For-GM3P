@@ -1,6 +1,7 @@
 ﻿using ICSharpCode.SharpZipLib.BZip2;
 using System;
 using System.Buffers.Binary;
+using System.Collections;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
@@ -287,7 +288,13 @@ public class UndertaleEmbeddedTexture : UndertaleNamedResource, IDisposable
             Name = new UndertaleString("Texture Unknown Index");
         return Name.Content + " (" + GetType().Name + ")";
     }
-
+    public void Blank()
+    {
+        GC.SuppressFinalize(this);
+        _textureData?.Blank();
+        _textureData = null;
+        TextureInfo = null;
+    }
     /// <inheritdoc/>
     public void Dispose()
     {
@@ -426,7 +433,11 @@ public class UndertaleEmbeddedTexture : UndertaleNamedResource, IDisposable
             _maxEndOfStreamPosition = position;
         }
 
-
+        public void Blank()
+        {
+            GC.SuppressFinalize(this);
+            _image = new GMImage(2048, 2048).ConvertToFormat(GMImage.ImageFormat.Qoi);
+        }
         /// <inheritdoc/>
         public void Dispose()
         {

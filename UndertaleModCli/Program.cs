@@ -1,25 +1,27 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Scripting;
+﻿using ImageMagick;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using UndertaleModLib;
-using UndertaleModLib.Scripting;
-using UndertaleModLib.Util;
-using static UndertaleModLib.UndertaleReader;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.CommandLine.Builder;
-using System.CommandLine.Parsing;
+using System.CommandLine.Invocation;
 using System.CommandLine.NamingConventionBinder;
+using System.CommandLine.Parsing;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using UndertaleModLib.Models;
-using Newtonsoft.Json;
+using UndertaleModLib;
 using UndertaleModLib.Compiler;
+using UndertaleModLib.Models;
+using UndertaleModLib.Scripting;
+using UndertaleModLib.Util;
+using static UndertaleModLib.UndertaleReader;
 
 namespace UndertaleModCli;
 
@@ -28,8 +30,9 @@ namespace UndertaleModCli;
 /// </summary>
 public partial class Program : IScriptInterface
 {
-    #region Properties
 
+    
+    #region Properties
     // taken from the Linux programmer manual:
     /// <summary>
     /// Value that should be returned on a successful operation.
@@ -54,7 +57,7 @@ public partial class Program : IScriptInterface
     /// <summary>
     /// File path or directory path that determines an output for the current Program.
     /// </summary>
-    private FileSystemInfo Output { get; }
+    public FileSystemInfo Output { get; }
 
     /// <summary>
     /// Constant, used to indicate that the user wants to replace everything in a replace command.
@@ -269,7 +272,11 @@ public partial class Program : IScriptInterface
         // This can throw if mandatory arguments are not given, in which case we want to exit cleanly without a stacktrace.
         try
         {
+            string pwd = Convert.ToString(Directory.GetParent(Convert.ToString(Directory.GetParent(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName))));
+            Console.WriteLine(pwd);
             program = new Program(options.Datafile, options.Scripts, options.Output, options.Verbose, options.Interactive);
+
+            
         }
         catch (Exception e)
         {
@@ -283,12 +290,18 @@ public partial class Program : IScriptInterface
             program.RunInteractiveMenu();
             return EXIT_SUCCESS;
         }
+        
+        //Adds Dynamic input path, if a script needs it
 
+        program.modNumber(Convert.ToString(Directory.GetParent(Convert.ToString(options.Datafile))));
         // if we have any scripts to run, run every one of them
         if (options.Scripts != null)
         {
+            
             foreach (FileInfo script in options.Scripts)
+            {
                 program.RunCSharpFile(script.FullName);
+            }
         }
 
         // if line to execute was given, execute it
@@ -301,10 +314,10 @@ public partial class Program : IScriptInterface
         // if parameter to save file was given, save the data file
         if (options.Output != null)
             program.SaveDataFile(options.Output.FullName);
-
+        
         return EXIT_SUCCESS;
     }
-
+    
     /// <summary>
     /// Method that gets executed on the "info" command
     /// </summary>
@@ -326,7 +339,7 @@ public partial class Program : IScriptInterface
         program.CliQuickInfo();
         return EXIT_SUCCESS;
     }
-
+    
     /// <summary>
     /// Method that gets executed on the "dump" command
     /// </summary>
@@ -447,9 +460,9 @@ public partial class Program : IScriptInterface
             }
 
             // If user wants to replace all, we'll be handling it differently. Replace every file from the provided directory
-            if (textureDict.ContainsKey(UMT_REPLACE_ALL))
+            if (textureDict.TryGetValue(UMT_REPLACE_ALL, out FileInfo value1))
             {
-                string directory = textureDict[UMT_REPLACE_ALL].FullName;
+                string directory = value1.FullName;
                 foreach (FileInfo file in new DirectoryInfo(directory).GetFiles())
                     program.ReplaceTextureWithFile(Path.GetFileNameWithoutExtension(file.Name), file);
             }
@@ -648,7 +661,7 @@ public partial class Program : IScriptInterface
             Console.WriteLine("Writing all strings to disk");
         File.WriteAllText($"{directory}/strings.txt", combinedText.ToString());
     }
-
+    
     /// <summary>
     /// Dumps all embedded textures in a data file.
     /// </summary>
@@ -820,12 +833,38 @@ public partial class Program : IScriptInterface
     /// <param name="fileToReplace">File path which should replace the embedded texture.</param>
     private void ReplaceTextureWithFile(string textureEntry, FileInfo fileToReplace)
     {
+        //int i = 0;
+        //foreach (UndertaleEmbeddedTexture target in Data.EmbeddedTextures)
+        //{
+        //    if (target is null)
+        //    {
+        //        i++;
+        //        continue;
+        //    }
+        //    string filename = $"Texture {i}.png";
+        //    try
+        //    {
+        //        target.TextureData.Image = GMImage.FromPng(File.ReadAllBytes(Path.Combine($"\\output\\xDeltaCombiner\\1\\Objects\\Objects\\EmbeddedTextures\\",filename)))
+        //                                          .ConvertToFormat(target.TextureData.Image.Format);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.Error.WriteLine($"Failed to import {filename}: {ex.Message}");
+        //    }
+        //    i++;
+        //}
         UndertaleEmbeddedTexture texture = Data.EmbeddedTextures.ByName(textureEntry);
 
         if (texture == null)
+
         {
+            Dictionary<UndertaleEmbeddedTexture, MagickImage> embeddedDictionary = new();
+            Data.EmbeddedTextures.Add(texture);
+            MagickImage newImage = texture.TextureData.Image.GetMagickImage();
+            embeddedDictionary[texture] = newImage;
+            UndertaleEmbeddedTexture.TexData _placeholderTexture = new() { Image = new GMImage(1, 1) };
             Console.Error.WriteLine($"Data file does not contain an embedded texture named {textureEntry}!");
-            return;
+            
         }
 
         if (Verbose)
@@ -926,7 +965,10 @@ public partial class Program : IScriptInterface
             throw new IOException($"Could not save data file: {e.Message}");
         }
     }
-
+    public void modNumber(string path)
+    {
+        
+    }
     /// <summary>
     /// Read supplied filename and return the data file.
     /// </summary>
