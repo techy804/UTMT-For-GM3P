@@ -29,6 +29,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="GameMakerxDeltaCombiner">
+      <HintPath>..\..\GameMakerxDeltaCombiner\GameMakerxDeltaCombiner\bin\Debug\net8.0\GameMakerxDeltaCombiner.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="runtimeconfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -22,6 +22,7 @@ using UndertaleModLib.Models;
 using UndertaleModLib.Scripting;
 using UndertaleModLib.Util;
 using static UndertaleModLib.UndertaleReader;
+using GM3P.modNumbers;
 
 namespace UndertaleModCli;
 
@@ -219,7 +220,7 @@ public partial class Program : IScriptInterface
         if (this.Verbose)
             Console.WriteLine("Output directory has been set to " + this.Output.FullName);
     }
-
+    dynamic modNo = new ModNumbers();
     /// <summary>
     /// Method that gets executed on the "new" command
     /// </summary>
